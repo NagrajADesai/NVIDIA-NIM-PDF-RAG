@@ -4,7 +4,7 @@ langchain_nvidia_ai_endpoints
 langchain_community
 langchain_google_genai
 langchain
-PyPDF2
+pymupdf
 faiss-cpu
 streamlit
 sentence-transformers
