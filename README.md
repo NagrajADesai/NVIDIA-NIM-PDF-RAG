@@ -60,7 +60,7 @@ Standard RAG systems often suffer from poor retrieval accuracy or hallucinations
 4.  **Configure Environment**:
     Create a `.env` file in the root directory and add your key from [build.nvidia.com](https://build.nvidia.com/):
     ```env
-    NVIDIA_API_KEY=nvapi-...
+    NVIDIA_API_KEY=api_key
     ```
 
 5.  **Run the Application**:
