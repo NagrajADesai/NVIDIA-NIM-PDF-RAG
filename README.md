@@ -22,12 +22,12 @@ Standard RAG systems often suffer from poor retrieval accuracy or hallucinations
 *   **📂 Multi-Knowledgebase Architecture**: Create and manage isolated vector databases for different projects, reports, or domains (e.g., "Finance", "Legal", "Tech").
 *   **📄 Intelligent Ingestion**: Uses **PyMuPDF** for robust PDF parsing and **RecursiveCharacterTextSplitter** for context-aware chunking.
 *   **📑 Precise Citations**: Returns exact source filenames and **page numbers** for every generated answer, ensuring verifiability.
-*   **⚛️ Modular Architecture**: Built with a scalable Object-Oriented Design (OOD) using Dataclasses, Managers, and modular Engines.
 
 ## 🛠️ Technology Stack
 
 -   **LLM**: Meta Llama 3.1 8B (via [NVIDIA NIM](https://build.nvidia.com/))
--   **Embeddings**: `all-MiniLM-L6-v2` (HuggingFace)
+-   **Embeddings**: [`all-MiniLM-L6-v2`](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2) (Running Locally)
+-   **Reranker**: [`ms-marco-MiniLM-L6-v2`](https://huggingface.co/cross-encoder/ms-marco-MiniLM-L6-v2) (Running Locally)
 -   **Vector DB**: FAISS (Facebook AI Similarity Search)
 -   **Orchestration**: LangChain
 -   **UI**: Streamlit (Multi-page App)
