@@ -18,7 +18,7 @@ class RetrievalEngine:
         self.reranker = CrossEncoder(ModelConfig.RERANKER_MODEL)
         self.bm25_retriever: Optional[BM25Retriever] = None
 
-    def initialize_vector_store(self, text_chunks: List[Document], save_path: str = AppConfig.VECTOR_DB_PATH):
+    def initialize_vector_store(self, text_chunks: List[Document], save_path: str):
         """
         Initializes or upgrades variables for the vector store.
         """
@@ -34,13 +34,20 @@ class RetrievalEngine:
                 self.vector_store = FAISS.from_documents(text_chunks, embedding=self.embeddings)
                 self.vector_store.save_local(save_path)
         
-        # Create BM25 Retriever (InMemory - requires documents to be passed or maintained)
-        # Note: In a persistent app, we'd pickle BM25 or rebuild it. 
-        # For this roadmap, we'll rebuild it from the chunks provided on startup or upload.
-        # Ideally, we should persist BM25 as well.
+        # Handle BM25 Retriever Persistence
+        bm25_path = os.path.join(save_path, "bm25.pkl")
+        
         if text_chunks:
+             # Create and Save BM25
              self.bm25_retriever = BM25Retriever.from_documents(text_chunks)
-             self.bm25_retriever.k = 10 # Retrieve more for hybrid usage
+             self.bm25_retriever.k = 10
+             with open(bm25_path, "wb") as f:
+                 pickle.dump(self.bm25_retriever, f)
+        elif os.path.exists(bm25_path):
+             # Load BM25
+             with open(bm25_path, "rb") as f:
+                 self.bm25_retriever = pickle.load(f)
+             self.bm25_retriever.k = 10
 
     def get_hybrid_retriever(self):
         """Returns an EnsembleRetriever (BM25 + FAISS)."""

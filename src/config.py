@@ -7,12 +7,12 @@ load_dotenv()
 @dataclass
 class AppConfig:
     """Application configuration settings."""
-    APP_TITLE: str = "🧠 NVIDIA NIM PDF Chat"
+    APP_TITLE: str = "NIMbleRAG: Advanced RAG Agent"
     APP_ICON: str = "🧠"
     LAYOUT: str = "wide"
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 100
-    VECTOR_DB_PATH: str = "faiss_db"
+    VECTOR_DB_DIR: str = "vector_dbs"
 
 @dataclass
 class ModelConfig:
