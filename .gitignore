@@ -1,6 +1,7 @@
 # other
 all-MiniLM-L6-v2/
 faiss_db/
+models--cross-encoder--ms-marco-MiniLM-L6-v2/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

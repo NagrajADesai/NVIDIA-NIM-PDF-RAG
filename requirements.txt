@@ -11,3 +11,5 @@ sentence-transformers
 sentencepiece
 accelerate
 requests
+rank_bm25
+ragas
