@@ -1,12 +1,11 @@
 import streamlit as st
+import nest_asyncio
+nest_asyncio.apply()
 import time
 from src.config import AppConfig, ModelConfig
 from src.retrieval_engine import RetrievalEngine
-from src.llm_chain import LLMChainBuilder
 from src.vector_manager import VectorStoreManager
-from langchain.retrievers import ContextualCompressionRetriever
-from langchain.retrievers.document_compressors import CrossEncoderReranker
-from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from src.agent_graph import build_graph
 
 def stream_text(text):
     """Yields text one character at a time for streaming effect."""
@@ -19,44 +18,34 @@ def initialize_chat_state():
         st.session_state.messages = []
     if "current_db" not in st.session_state:
         st.session_state.current_db = None
-    if "conversation_chain" not in st.session_state:
-        st.session_state.conversation_chain = None
+    if "agent_app" not in st.session_state:
+        st.session_state.agent_app = None
 
-def load_chain(db_name, vector_manager, retrieval_engine, llm_builder):
-    """Loads the chain for the selected DB."""
+def load_agent(db_name, vector_manager, retrieval_engine):
+    """Loads the agent for the selected DB."""
     try:
         db_path = vector_manager.get_db_path(db_name)
         
-        # Initialize Vector Store for this DB (No new chunks, just load)
+        # Initialize Vector Store/Retriever components (Load existing)
         retrieval_engine.initialize_vector_store(text_chunks=None, save_path=db_path)
         
-        # Build Retriever
-        base_retriever = retrieval_engine.get_hybrid_retriever()
+        # Build Hybrid Retriever
+        retriever = retrieval_engine.get_hybrid_retriever()
         
-        # Reranker
-        model = HuggingFaceCrossEncoder(model_name=ModelConfig.RERANKER_MODEL)
-        compressor = CrossEncoderReranker(model=model, top_n=5)
-        compression_retriever = ContextualCompressionRetriever(
-            base_compressor=compressor, base_retriever=base_retriever
-        )
-        
-        # Chain
-        return llm_builder.create_chain(compression_retriever)
+        # Build Graph
+        return build_graph(retriever)
     except Exception as e:
         st.error(f"Error loading database '{db_name}': {e}")
         return None
 
 def main():
     st.set_page_config("Chat With Data", page_icon="💬", layout="wide")
-    st.title("💬 Chat With Data")
+    st.title("💬 Chat With Agent")
 
     initialize_chat_state()
     
     vector_manager = VectorStoreManager()
-    # Note: We instantiate these fresh for the page re-run or use session state if expensive to init
-    # Since these classes are light-weight (heavy lifting in methods), re-init is fine.
     retrieval_engine = RetrievalEngine()
-    llm_builder = LLMChainBuilder()
 
     dbs = vector_manager.list_dbs()
 
@@ -82,21 +71,27 @@ def main():
         if selected_db != st.session_state.current_db:
             st.session_state.current_db = selected_db
             st.session_state.messages = [] # Clear history on switch
-            with st.spinner(f"Loading '{selected_db}'..."):
-                 st.session_state.conversation_chain = load_chain(selected_db, vector_manager, retrieval_engine, llm_builder)
+            with st.spinner(f"Loading Agent for '{selected_db}'..."):
+                 st.session_state.agent_app = load_agent(selected_db, vector_manager, retrieval_engine)
     
-    # Check Chain Availability
-    if not st.session_state.conversation_chain:
+    # Check Agent Availability
+    if not st.session_state.agent_app:
         if not dbs:
              st.info("👈 Please create a Knowledgebase first.")
         else:
-             # Should stick here if load failed or waiting for selection
              pass
     else:
         # Chat Interface
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
+                
+                # Show partial steps if preserved (optional, kept simple for history)
+                if "steps" in msg and msg["steps"]:
+                    with st.expander("🧠 Agent Thoughts (History)"):
+                        for step in msg["steps"]:
+                            st.write(f"- {step}")
+
                 if "sources" in msg and msg["sources"]:
                     with st.expander("📚 Source Citations"):
                         for i, doc in enumerate(msg["sources"]):
@@ -113,12 +108,23 @@ def main():
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
                 full_response = ""
+                steps_display = st.status("🧠 Agent Thinking...", expanded=True)
                 
                 try:
-                    response = st.session_state.conversation_chain({'question': user_question})
-                    answer_text = response.get('answer', "")
-                    source_docs = response.get('source_documents', [])
+                    # Invoke Agent
+                    inputs = {"question": user_question}
+                    final_state = st.session_state.agent_app.invoke(inputs)
+                    
+                    answer_text = final_state.get("generation", "I couldn't generate an answer.")
+                    source_docs = final_state.get("documents", [])
+                    steps = final_state.get("steps", [])
+                    
+                    # Update status with steps
+                    for step in steps:
+                         steps_display.write(f"- {step}")
+                    steps_display.update(label="🧠 Agent Finished Thinking", state="complete", expanded=False)
 
+                    # Stream Response
                     for char in stream_text(answer_text):
                         full_response += char
                         message_placeholder.markdown(full_response + "▌")
@@ -137,10 +143,13 @@ def main():
                     st.session_state.messages.append({
                         "role": "assistant",
                         "content": full_response,
-                        "sources": source_docs
+                        "sources": source_docs,
+                        "steps": steps
                     })
                 except Exception as e:
+                    steps_display.update(label="❌ Error", state="error")
                     st.error(f"Error generating response: {e}")
 
 if __name__ == "__main__":
     main()
+

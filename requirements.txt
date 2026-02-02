@@ -390,3 +390,13 @@ zict==3.0.0
 zipp==3.17.0
 zope.interface==5.4.0
 zstandard==0.23.0
+
+python-docx
+python-pptx
+langgraph
+pandas
+openpyxl
+pymupdf
+langchain
+langchain-community
+langchain-nvidia-ai-endpoints
